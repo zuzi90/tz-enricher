@@ -1,0 +1,105 @@
+version: "3"
+services:
+  zookeeper_srv:
+    image: confluentinc/cp-zookeeper:7.3.2
+    container_name: zookeeper_srv
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kafka_network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.3.2
+    container_name: broker
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper_srv
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_CREATE_TOPICS: "FIO:1:1,FIO_FAILED:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper_srv:2181"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_INTERNAL://broker:19092,PLAINTEXT://192.168.88.225:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - kafka_network
+
+  kafka-ui:
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    image: provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:19092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+    networks:
+      - kafka_network
+
+  db:
+    image: postgres:14.2-alpine
+    container_name: TZahContainer
+    environment:
+      POSTGRES_DB: tzDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5431:5432"
+    volumes:
+      - tz:/var/lib/postgresql/data
+
+
+  redis:
+    image: "redis:alpine"
+    restart: always
+
+    ports:
+      - 6379:6379
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    logging:
+      driver: 'gelf'
+      options:
+        gelf-address: 'udp://localhost:12201'
+        tag: prometheus
+    ports:
+      - 9090:9090
+    networks:
+      - kafka_network
+    volumes:
+      - prom:/var/lib/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    links:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=MYPASSWORT
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - kafka_network
+    volumes:
+      - gr:/var/lib/grafana
+
+
+volumes:
+  tz:
+  kafka:
+  gr:
+  prom:
+
+networks:
+  kafka_network:
+    driver: bridge
+
+
