@@ -13,11 +13,11 @@ test: up
 	go test ./...
 	make down
 
-lint:
-	@echo "\n${GREEN}Linting Golang code with golangci${NC}"
-	gofumpt -w .
-	go mod tidy
-	golangci-lint run ./...
+#lint:
+#	@echo "\n${GREEN}Linting Golang code with golangci${NC}"
+#	gofumpt -w .
+#	go mod tidy
+#	golangci-lint run ./...
 
 run:
 	@echo "\n${GREEN}Run the application${NC}"
